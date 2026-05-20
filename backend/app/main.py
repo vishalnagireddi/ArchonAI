@@ -16,39 +16,33 @@ logger = logging.getLogger("uvicorn.error")
 async def lifespan(app: FastAPI):
     # Startup actions
     logger.info("Initializing database tables...")
+    
+    # 1. Create base tables in their own clean transaction
     try:
         async with engine.begin() as conn:
-            # 1. First run create_all to create new tables (like 'users')
             await conn.run_sync(Base.metadata.create_all)
-            
-            # 2. Run schema migrations to add 'user_id' to 'design_histories' if missing
-            try:
-                # Try Postgres-specific check first
-                await conn.execute(text("""
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 
-                            FROM information_schema.columns 
-                            WHERE table_name='design_histories' AND column_name='user_id'
-                        ) THEN
-                            ALTER TABLE design_histories 
-                            ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
-                        END IF;
-                    END $$;
-                """))
-                logger.info("Database schema migration checked/applied successfully.")
-            except Exception as pg_err:
-                logger.info(f"PostgreSQL migration failed/skipped: {str(pg_err)}. Trying fallback...")
-                try:
-                    await conn.execute(text("ALTER TABLE design_histories ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
-                    logger.info("Fallback database schema migration applied successfully.")
-                except Exception as fallback_err:
-                    logger.info(f"Fallback migration skipped (column likely already exists): {str(fallback_err)}")
-                    
-        logger.info("Database tables initialized successfully.")
+        logger.info("Base database tables initialized successfully.")
     except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}")
+        logger.error(f"Error creating base tables: {str(e)}")
+        
+    # 2. Run column additions in a separate clean transaction block
+    try:
+        async with engine.begin() as conn:
+            # PostgreSQL 9.6+ supports ADD COLUMN IF NOT EXISTS
+            await conn.execute(text("""
+                ALTER TABLE design_histories 
+                ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+            """))
+        logger.info("PostgreSQL user_id column check/alteration completed successfully.")
+    except Exception as pg_err:
+        logger.info(f"PostgreSQL specific column alteration failed: {str(pg_err)}. Trying SQLite fallback...")
+        # Fallback for SQLite which doesn't support 'ADD COLUMN IF NOT EXISTS'
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE design_histories ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
+            logger.info("SQLite fallback column alteration applied successfully.")
+        except Exception as sqlite_err:
+            logger.info(f"SQLite fallback skipped (column likely already exists): {str(sqlite_err)}")
         
     yield
     
@@ -56,6 +50,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down database engine connections...")
     await engine.dispose()
     logger.info("Shutdown complete.")
+
 
 
 app = FastAPI(
