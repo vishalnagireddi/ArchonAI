@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.database.database import engine, Base
@@ -17,8 +18,34 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database tables...")
     try:
         async with engine.begin() as conn:
-            # Auto-create SQLAlchemy tables on startup for hassle-free dev
+            # 1. First run create_all to create new tables (like 'users')
             await conn.run_sync(Base.metadata.create_all)
+            
+            # 2. Run schema migrations to add 'user_id' to 'design_histories' if missing
+            try:
+                # Try Postgres-specific check first
+                await conn.execute(text("""
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 
+                            FROM information_schema.columns 
+                            WHERE table_name='design_histories' AND column_name='user_id'
+                        ) THEN
+                            ALTER TABLE design_histories 
+                            ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+                        END IF;
+                    END $$;
+                """))
+                logger.info("Database schema migration checked/applied successfully.")
+            except Exception as pg_err:
+                logger.info(f"PostgreSQL migration failed/skipped: {str(pg_err)}. Trying fallback...")
+                try:
+                    await conn.execute(text("ALTER TABLE design_histories ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;"))
+                    logger.info("Fallback database schema migration applied successfully.")
+                except Exception as fallback_err:
+                    logger.info(f"Fallback migration skipped (column likely already exists): {str(fallback_err)}")
+                    
         logger.info("Database tables initialized successfully.")
     except Exception as e:
         logger.error(f"Error initializing database: {str(e)}")
@@ -29,6 +56,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down database engine connections...")
     await engine.dispose()
     logger.info("Shutdown complete.")
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
