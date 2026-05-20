@@ -17,6 +17,18 @@ export interface DesignHistoryItem {
   prompt: string;
   response: SystemDesign;
   created_at: string;
+  user_id?: number | null;
+}
+
+export interface UserResponse {
+  id: number;
+  username: string;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -25,13 +37,27 @@ class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
-    const headers = {
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = localStorage.getItem('archon_auth_token');
+    }
+
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
 
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     try {
-      const response = await fetch(url, { ...options, headers });
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...headers,
+          ...options.headers,
+        } as Record<string, string>
+      });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -43,6 +69,24 @@ class ApiService {
       console.error(`API Request to ${endpoint} failed:`, error);
       throw error;
     }
+  }
+
+  async signup(username: string, password: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  async login(username: string, password: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  async getMe(): Promise<UserResponse> {
+    return this.request<UserResponse>('/auth/me');
   }
 
   async generateDesign(prompt: string): Promise<DesignHistoryItem> {
@@ -62,3 +106,4 @@ class ApiService {
 }
 
 export const api = new ApiService();
+

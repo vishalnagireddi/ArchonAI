@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, JSON, DateTime
+from sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from app.database.database import Base
 
 class DesignHistory(Base):
@@ -9,11 +10,16 @@ class DesignHistory(Base):
     prompt = Column(String, nullable=False)
     response = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
+    
+    # User linkage
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    user = relationship("User", back_populates="designs")
 
     def to_dict(self):
         return {
             "id": self.id,
             "prompt": self.prompt,
             "response": self.response,
-            "created_at": self.created_at.isoformat()
+            "created_at": self.created_at.isoformat(),
+            "user_id": self.user_id
         }

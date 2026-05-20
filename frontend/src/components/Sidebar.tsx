@@ -5,15 +5,22 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Cpu, Award, Plus, MessageSquare } from "lucide-react";
 import { api, DesignHistoryItem } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { isAuthenticated, openAuthModal } = useAuth();
   const [history, setHistory] = useState<DesignHistoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let active = true;
     async function loadHistory() {
+      if (!isAuthenticated) {
+        setHistory([]);
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         const data = await api.getHistory();
@@ -32,7 +39,7 @@ export default function Sidebar() {
     return () => {
       active = false;
     };
-  }, [pathname]);
+  }, [pathname, isAuthenticated]);
 
   return (
     <aside className="w-72 flex-shrink-0 flex flex-col h-full bg-[#0e0e0d] border-r border-[#2c2b29] text-[#8f8980] overflow-hidden z-20">
@@ -75,6 +82,18 @@ export default function Sidebar() {
               </div>
             ))}
           </div>
+        ) : !isAuthenticated ? (
+          <div className="px-3 py-6 rounded-xl border border-[#2c2b29] bg-[#161514] text-center space-y-3 mx-1 mt-2">
+            <p className="text-xs text-[#8c867e] leading-relaxed">
+              Login to save, view, and sync your system design history.
+            </p>
+            <button
+              onClick={openAuthModal}
+              className="w-full py-1.5 px-3 rounded-lg border border-[#c5a281]/30 hover:border-[#c5a281] bg-[#c5a281]/5 text-[#c5a281] hover:bg-[#c5a281]/10 text-xs font-semibold transition-all duration-200"
+            >
+              Log In Now
+            </button>
+          </div>
         ) : history.length === 0 ? (
           <div className="px-3 py-4 text-xs text-[#8c867e] italic text-center">
             No architectures generated yet
@@ -116,3 +135,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+
