@@ -20,7 +20,6 @@ COPY . .
 # Learn more here: https://nextjs.org/telemetry
 # Disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
-ENV NEXT_PUBLIC_API_URL=http://localhost:8000
 
 RUN npm run build
 

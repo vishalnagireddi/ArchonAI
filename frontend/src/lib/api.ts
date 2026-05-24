@@ -31,10 +31,29 @@ export interface AuthResponse {
   token_type: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:8000'
-    : 'https://archonai-production.up.railway.app');
+const getApiBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window === 'undefined') {
+    return 'https://archonai-production.up.railway.app';
+  }
+  const hostname = window.location.hostname;
+  const isLocal = 
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('172.') ||
+    hostname.endsWith('.local');
+    
+  return isLocal 
+    ? `http://${hostname}:8000` 
+    : 'https://archonai-production.up.railway.app';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 
 
 class ApiService {
