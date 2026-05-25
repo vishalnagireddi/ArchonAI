@@ -1,12 +1,10 @@
-# AI System Design Generator (NeoArchitect.AI)
+# AI System Design Generator (ArchonAI)
 
 NeoArchitect.AI is a modern, high-performance, and deployable production-grade web application designed for software engineers and systems architects. Users enter prompts like *"Design a scalable Netflix video system"* or *"Design an Uber-like ride-hailing system"*, and the AI generates complete architectural specifications alongside beautiful, interactive **Mermaid.js topology diagrams**.
 
 This repository is built using a **Clean Architecture** pattern to remain modular, fast, and easy to deploy.
 
----
 
-## 🚀 Key Features
 - **Prompt Input**: Highly interactive UI with rapid-fill quick-suggest pills for popular FAANG systems.
 - **Structured AI Generation**: Exhaustive architectural output targeting Overview, Microservices, Databases, API contracts, Caching, Scaling, Cybersecurity, Operations/Monitoring, and Infrastructure.
 - **Mermaid.js Integrations**: Auto-generated, dynamic system diagrams rendered on the client with full copy-to-clipboard and SVG download capabilities.
@@ -16,7 +14,7 @@ This repository is built using a **Clean Architecture** pattern to remain modula
 
 ---
 
-## 🛠️ Technology Stack & Rationale
+# Technology Stack & Rationale
 
 | Layer | Technology | Rationale |
 | :--- | :--- | :--- |
