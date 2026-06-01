@@ -19,9 +19,11 @@ class Settings(BaseSettings):
         if not v:
             raise ValueError("DATABASE_URL must be provided")
         
-        # If it's standard postgresql URL, replace it with asyncpg for async driver compatibility
+        # If it's standard postgresql/postgres URL, replace it with asyncpg for async driver compatibility
         if v.startswith("postgresql://"):
             return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
         return v
 
     model_config = SettingsConfigDict(
